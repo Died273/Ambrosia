@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "predeploy": "npm run build && echo 'ambrosia-app.com' > out/CNAME && touch out/.nojekyll",
+    "deploy": "gh-pages -d out"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
@@ -21,6 +23,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "gh-pages": "^6.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
