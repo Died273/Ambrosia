@@ -17,7 +17,9 @@ export default function LandingPage() {
       <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-16 sm:py-24">
         <section className="max-w-2xl mx-auto text-center space-y-6">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-medium leading-tight tracking-tight text-[#F5F0E8] [font-family:var(--font-cormorant)]">
-            See the person, not just their picture
+            See the person.
+            <br />
+            Not just their picture.
           </h1>
           <p className="text-lg sm:text-xl text-[#D4C9BC] max-w-lg mx-auto">
             A new dating app that matches you based on personality, and reveals pictures as you connect
