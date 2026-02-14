@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import NavBar from "@/components/NavBar";
 import { useApp } from "@/context/AppContext";
 
+// Landing page for Ambrosia dating app
 export default function LandingPage() {
   const { user } = useApp();
 
