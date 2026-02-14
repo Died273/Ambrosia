@@ -1,6 +1,8 @@
-import type { UserProfile } from "@/lib/types";
-import type { QuizAnswer } from "@/lib/types";
+import type { UserProfile, QuizAnswer } from "@/lib/types";
 
+/**
+ * Mirrors the `profiles` table columns in Supabase (snake_case).
+ */
 export type ProfileRow = {
   id: string;
   name: string;
@@ -10,14 +12,13 @@ export type ProfileRow = {
   location: string;
   email: string;
   photo_url: string | null;
-  core_values: Record<string, string> | null;
-  emotional_depth: Record<string, string> | null;
-  lifestyle_vision: Record<string, string> | null;
+  photos: string[] | null;
   quiz_snapshot: QuizAnswer[] | null;
   created_at: string;
   updated_at: string;
 };
 
+/** Convert a Supabase row into the app's UserProfile shape. */
 export function rowToProfile(row: ProfileRow): UserProfile {
   return {
     id: row.id,
@@ -28,14 +29,13 @@ export function rowToProfile(row: ProfileRow): UserProfile {
     location: row.location,
     email: row.email,
     photoUrl: row.photo_url ?? undefined,
-    coreValues: row.core_values ?? undefined,
-    emotionalDepth: row.emotional_depth ?? undefined,
-    lifestyleVision: row.lifestyle_vision ?? undefined,
+    photos: row.photos ?? undefined,
     quizSnapshot: row.quiz_snapshot ?? undefined,
     createdAt: new Date(row.created_at).getTime(),
   };
 }
 
+/** Convert a UserProfile into the shape expected by the `profiles` table insert. */
 export function profileToRow(
   profile: Omit<UserProfile, "id" | "createdAt"> & { id: string }
 ): Omit<ProfileRow, "created_at" | "updated_at"> {
@@ -48,9 +48,7 @@ export function profileToRow(
     location: profile.location,
     email: profile.email,
     photo_url: profile.photoUrl ?? null,
-    core_values: profile.coreValues ? profile.coreValues : null,
-    emotional_depth: profile.emotionalDepth ? profile.emotionalDepth : null,
-    lifestyle_vision: profile.lifestyleVision ? profile.lifestyleVision : null,
-    quiz_snapshot: profile.quizSnapshot ? profile.quizSnapshot : null,
+    photos: profile.photos ?? null,
+    quiz_snapshot: profile.quizSnapshot ?? null,
   };
 }

@@ -1,35 +1,37 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import NavBar from "@/components/NavBar";
+import { useApp } from "@/context/AppContext";
 
 export default function LandingPage() {
+  const { user } = useApp();
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="w-full py-6 px-4 sm:px-6 lg:px-8">
-        <nav className="max-w-5xl mx-auto flex items-center justify-between">
-          <span className="text-xl font-semibold tracking-tight text-[#F5F0E8] [font-family:var(--font-cormorant)]">
-            Ambrosia
-          </span>
-          <Link
-            href="/quiz"
-            className="text-[#D4C9BC] hover:text-[#F5F0E8] text-sm font-medium transition-colors"
-          >
-            Take the Quiz
-          </Link>
-        </nav>
+        <NavBar />
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-16 sm:py-24">
         <section className="max-w-2xl mx-auto text-center space-y-6">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-medium leading-tight tracking-tight text-[#F5F0E8] [font-family:var(--font-cormorant)]">
-            See the person, not just the picture.
+            See the person, not just their picture
           </h1>
           <p className="text-lg sm:text-xl text-[#D4C9BC] max-w-md mx-auto">
             Build connection before first impressions.
           </p>
           <div className="pt-4">
-            <Button href="/quiz" variant="primary">
-              Take the Compatibility Quiz
-            </Button>
+            {user ? (
+              <Button href="/matches" variant="primary">
+                Go to your matches
+              </Button>
+            ) : (
+              <Button href="/quiz" variant="primary">
+                Take the Compatibility Quiz
+              </Button>
+            )}
           </div>
         </section>
 
@@ -81,15 +83,23 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-[#A89888] text-sm">Ambrosia</span>
           <div className="flex gap-6 text-sm text-[#A89888]">
-            <Link href="/quiz" className="hover:text-[#D4C9BC] transition-colors">
-              Quiz
-            </Link>
-            <Link href="/login" className="hover:text-[#D4C9BC] transition-colors">
-              Sign in
-            </Link>
-            <Link href="/signup" className="hover:text-[#D4C9BC] transition-colors">
-              Sign up
-            </Link>
+            {user ? (
+              <Link href="/matches" className="hover:text-[#D4C9BC] transition-colors">
+                Matches
+              </Link>
+            ) : (
+              <>
+                <Link href="/quiz" className="hover:text-[#D4C9BC] transition-colors">
+                  Quiz
+                </Link>
+                <Link href="/login" className="hover:text-[#D4C9BC] transition-colors">
+                  Sign in
+                </Link>
+                <Link href="/signup" className="hover:text-[#D4C9BC] transition-colors">
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </footer>

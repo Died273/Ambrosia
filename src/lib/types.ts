@@ -18,9 +18,7 @@ export interface UserProfile {
   location: string;
   email: string;
   photoUrl?: string;
-  coreValues?: Record<string, string>;
-  emotionalDepth?: Record<string, string>;
-  lifestyleVision?: Record<string, string>;
+  photos?: string[];
   quizSnapshot?: QuizAnswer[];
   createdAt: number;
 }

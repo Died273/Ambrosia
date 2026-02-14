@@ -16,12 +16,17 @@ const TRANSITION_MS = 320;
 
 export default function QuizPage() {
   const router = useRouter();
-  const { setQuizAnswers, completeQuiz } = useApp();
+  const { user, setQuizAnswers, completeQuiz } = useApp();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>(getInitialAnswers());
   const [showSnapshot, setShowSnapshot] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const pendingActionRef = useRef<{ type: "next" } | { type: "complete"; newAnswers: Record<string, string> } | null>(null);
+
+  // Redirect logged-in users to matches
+  useEffect(() => {
+    if (user) router.replace("/matches");
+  }, [user, router]);
 
   const currentQuestion = QUIZ_QUESTIONS[step];
   const progress = ((step + 1) / QUIZ_QUESTIONS.length) * 100;

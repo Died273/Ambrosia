@@ -33,8 +33,8 @@ interface AppContextValue {
   completeQuiz: () => void;
   signUp: (profile: Omit<UserProfile, "id" | "createdAt"> & { password: string }) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => void;
+  updateUserPhotos: (photos: string[]) => Promise<{ error: AuthError | null }>;
   getOrCreateConversation: (matchId: string) => Conversation;
   sendMessage: (conversationId: string, text: string) => void;
   getMessageCount: (matchId: string) => number;
@@ -130,35 +130,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const supabase = createClient();
     if (supabase) {
-      const fetchProfileWithRetry = (userId: string, retries = 3) => {
+      // Helper: fetch the profile row for a given user id (with retries for replication lag)
+      const fetchProfile = (userId: string, retries = 3) => {
         supabase
           .from("profiles")
           .select("*")
           .eq("id", userId)
           .single()
           .then(({ data, error }) => {
-            if (!error && data) setUser(rowToProfile(data as ProfileRow));
-            else if (retries > 0) {
-              setTimeout(() => fetchProfileWithRetry(userId, retries - 1), 500);
-            } else setUser(null);
+            if (!error && data) {
+              const profile = rowToProfile(data as ProfileRow);
+              setUser(profile);
+              saveJson(STORAGE_KEYS.user, profile);
+            } else if (retries > 0) {
+              setTimeout(() => fetchProfile(userId, retries - 1), 500);
+            } else {
+              setUser(null);
+            }
           });
       };
 
+      // Check for an existing session on mount
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) fetchProfileWithRetry(session.user.id);
+        if (session?.user) fetchProfile(session.user.id);
       });
 
+      // Listen for future auth changes (sign-in, sign-out, token refresh)
       const {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!session?.user) {
           setUser(null);
+          saveJson(STORAGE_KEYS.user, null);
           return;
         }
-        fetchProfileWithRetry(session.user.id);
+        fetchProfile(session.user.id);
       });
+
       return () => subscription.unsubscribe();
     } else {
+      // No Supabase — fall back to localStorage
       setUser(loadJson(STORAGE_KEYS.user, null));
     }
   }, []);
@@ -187,25 +198,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const signUp = useCallback(
     async (profile: Omit<UserProfile, "id" | "createdAt"> & { password: string }): Promise<{ error: AuthError | null }> => {
       const supabase = createClient();
+
       if (supabase) {
+        // 1. Create auth user in Supabase
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: profile.email,
           password: profile.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
         });
-        if (authError)
-          return { error: { message: authError.message } };
+
+        if (authError) return { error: { message: authError.message } };
+
         const userId = authData.user?.id;
-        if (!userId) return { error: { message: "Sign up failed" } };
-        const { password: _p, ...profileWithoutPassword } = profile;
-        const row = profileToRow({ ...profileWithoutPassword, id: userId });
-        const { error: insertError } = await supabase.from("profiles").insert({
-          ...row,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-        if (insertError) return { error: { message: insertError.message } };
-        setUser(rowToProfile({ ...row, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as ProfileRow));
+        if (!userId) return { error: { message: "Sign up failed – no user ID returned" } };
+
+        // 2. Insert profile row into the profiles table
+        const { password: _pw, ...rest } = profile;
         const quizData = loadJson<QuizState>(STORAGE_KEYS.quiz, { answers: [], completed: false });
+        const row = profileToRow({ ...rest, id: userId, quizSnapshot: quizData.answers });
+
+        const { error: insertError } = await supabase.from("profiles").insert(row);
+
+        if (insertError) {
+          return { error: { message: `Profile creation failed: ${insertError.message}` } };
+        }
+
+        // 3. Fetch the created row (to get server-generated timestamps)
+        const { data: created, error: fetchError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
+
+        if (fetchError || !created) {
+          return { error: { message: "Could not fetch created profile" } };
+        }
+
+        const newUser = rowToProfile(created as ProfileRow);
+        setUser(newUser);
+        saveJson(STORAGE_KEYS.user, newUser);
+
+        // 4. Generate local matches (still mock-based)
         const mockProfiles = MOCK_PROFILES.map((p) => ({ ...p, quizSnapshot: quizData.answers as QuizAnswer[] }));
         const newMatches: Match[] = mockProfiles.map((p) => {
           const score = computeCompatibilityScore(quizData.answers || [], p.quizSnapshot || []);
@@ -222,16 +257,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         saveJson(STORAGE_KEYS.matches, newMatches);
         return { error: null };
       }
+
+      // Fallback: localStorage-only mode
+      const fallbackQuiz = loadJson<QuizState>(STORAGE_KEYS.quiz, { answers: [], completed: false });
       const newUser: UserProfile = {
         ...profile,
         id: "user-" + Date.now(),
+        quizSnapshot: fallbackQuiz.answers,
         createdAt: Date.now(),
       };
       persistUser(newUser);
-      const quizData = loadJson<QuizState>(STORAGE_KEYS.quiz, { answers: [], completed: false });
-      const mockProfiles = MOCK_PROFILES.map((p) => ({ ...p, quizSnapshot: quizData.answers as QuizAnswer[] }));
+      const mockProfiles = MOCK_PROFILES.map((p) => ({ ...p, quizSnapshot: fallbackQuiz.answers as QuizAnswer[] }));
       const newMatches: Match[] = mockProfiles.map((p) => {
-        const score = computeCompatibilityScore(quizData.answers || [], p.quizSnapshot || []);
+        const score = computeCompatibilityScore(fallbackQuiz.answers || [], p.quizSnapshot || []);
         return {
           id: "match-" + p.id,
           userId: p.id,
@@ -250,30 +288,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string): Promise<{ error: AuthError | null }> => {
     const supabase = createClient();
-    if (!supabase) return { error: { message: "Supabase not configured" } };
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) return { error: { message: authError.message } };
-    if (!data.user) return { error: { message: "Sign in failed" } };
-    const { data: profileRow, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", data.user.id)
-      .single();
-    if (profileError || !profileRow) return { error: { message: "Profile not found" } };
-    setUser(rowToProfile(profileRow as ProfileRow));
-    setMatches(loadJson(STORAGE_KEYS.matches, []));
-    return { error: null };
-  }, []);
 
-  const signInWithGoogle = useCallback(async (): Promise<{ error: AuthError | null }> => {
-    const supabase = createClient();
-    if (!supabase) return { error: { message: "Supabase not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env" } };
-    const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : "";
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo },
-    });
-    if (error) return { error: { message: error.message } };
+    if (supabase) {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) return { error: { message: authError.message } };
+      if (!data.user) return { error: { message: "Sign in failed" } };
+
+      // Fetch the user's profile from the DB
+      const { data: profileRow, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError || !profileRow) return { error: { message: "Profile not found" } };
+
+      const profile = rowToProfile(profileRow as ProfileRow);
+      setUser(profile);
+      saveJson(STORAGE_KEYS.user, profile);
+      setMatches(loadJson(STORAGE_KEYS.matches, []));
+      return { error: null };
+    }
+
+    // Fallback: localStorage-only
+    const storedUser = loadJson<UserProfile | null>(STORAGE_KEYS.user, null);
+    if (!storedUser || storedUser.email !== email) {
+      return { error: { message: "Invalid email or password" } };
+    }
+    setUser(storedUser);
+    setMatches(loadJson(STORAGE_KEYS.matches, []));
     return { error: null };
   }, []);
 
@@ -377,6 +420,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const updateUserPhotos = useCallback(async (photos: string[]): Promise<{ error: AuthError | null }> => {
+    if (!user) return { error: { message: "Not signed in" } };
+
+    const supabase = createClient();
+    if (supabase) {
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ photos, photo_url: photos[0] ?? null })
+        .eq("id", user.id);
+
+      if (updateError) return { error: { message: updateError.message } };
+    }
+
+    const updated = { ...user, photos, photoUrl: photos[0] ?? user.photoUrl };
+    setUser(updated);
+    saveJson(STORAGE_KEYS.user, updated);
+    return { error: null };
+  }, [user]);
+
   const value: AppContextValue = {
     user,
     quiz,
@@ -386,8 +448,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     completeQuiz,
     signUp,
     signIn,
-    signInWithGoogle,
     signOut,
+    updateUserPhotos,
     getOrCreateConversation,
     sendMessage,
     getMessageCount,
