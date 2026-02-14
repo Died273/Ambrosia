@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ambrosia
 
-## Getting Started
+**See the person, not just the picture.**
 
-First, run the development server:
+A modern, emotionally intelligent dating app MVP where profile photos stay blurred until meaningful conversation deepens. No swiping. No gamification.
+
+## Design
+
+- **Palette:** `#3F1414` (background), `#940128` (CTA), `#800022` (highlights), `#550015` (cards), warm off-white text.
+- **Tone:** Minimal, dark romantic, calm, premium.
+
+## Features
+
+1. **Landing** — Hero, “How it works” (3 steps), CTA to quiz.
+2. **Compatibility Quiz** — 8–10 values-based questions, progress bar, then “Compatibility Snapshot” and CTA to create profile.
+3. **Sign up & Profile** — Name, age, gender, location, email/password; then Core Values, Emotional Depth, Lifestyle & Vision (displayed as profile cards).
+4. **Matches** — 3–5 curated matches, blurred photo, compatibility summary, “Start conversation.”
+5. **Chat** — Progressive blur: 100% → 70% (5 msgs) → 40% (15 msgs) → full (30 msgs or mutual “Reveal”). Connection level label and optional conversation prompts.
+
+## Run
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase (auth + profiles)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a project at [supabase.com](https://supabase.com).
+2. Copy `.env.local.example` to `.env.local` and set:
+   - `NEXT_PUBLIC_SUPABASE_URL` — Project URL (Settings → API)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — anon/public key
+3. In the Supabase **SQL Editor**, run the schema: paste and run the contents of `supabase/schema.sql`. This creates the `profiles` table and RLS policies.
+4. (Optional) In **Authentication → Providers → Email**, turn off “Confirm email” if you want sign-up without verification for local dev.
 
-## Learn More
+Without Supabase env vars, the app still runs and uses `localStorage` for auth (no real login).
 
-To learn more about Next.js, take a look at the following resources:
+## Tech
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16 (App Router), TypeScript, Tailwind CSS.
+- **Auth:** Supabase Auth when env is set; otherwise `localStorage`.
+- **Profiles:** Stored in Supabase `profiles` (id = `auth.uid()`).
+- Quiz, matches, conversations: still in `localStorage` for now.
+- Compatibility score from quiz overlap; blur level from message count and mutual reveal.

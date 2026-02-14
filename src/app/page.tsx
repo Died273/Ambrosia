@@ -1,65 +1,98 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen flex flex-col">
+      <header className="w-full py-6 px-4 sm:px-6 lg:px-8">
+        <nav className="max-w-5xl mx-auto flex items-center justify-between">
+          <span className="text-xl font-semibold tracking-tight text-[#F5F0E8] [font-family:var(--font-cormorant)]">
+            Ambrosia
+          </span>
+          <Link
+            href="/quiz"
+            className="text-[#D4C9BC] hover:text-[#F5F0E8] text-sm font-medium transition-colors"
+          >
+            Take the Quiz
+          </Link>
+        </nav>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-16 sm:py-24">
+        <section className="max-w-2xl mx-auto text-center space-y-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-medium leading-tight tracking-tight text-[#F5F0E8] [font-family:var(--font-cormorant)]">
+            See the person, not just the picture.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg sm:text-xl text-[#D4C9BC] max-w-md mx-auto">
+            Build connection before first impressions.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          <div className="pt-4">
+            <Button href="/quiz" variant="primary">
+              Take the Compatibility Quiz
+            </Button>
+          </div>
+        </section>
+
+        <section className="w-full max-w-4xl mx-auto mt-24 sm:mt-32 px-4">
+          <h2 className="text-2xl sm:text-3xl font-medium text-[#F5F0E8] [font-family:var(--font-cormorant)] text-center mb-16">
+            How it works
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-8 sm:gap-12">
+            {[
+              {
+                step: "1",
+                title: "Take a values-based quiz",
+                description:
+                  "Answer questions about what matters to you — in life and in love. No right or wrong, only honesty.",
+              },
+              {
+                step: "2",
+                title: "Get matched intentionally",
+                description:
+                  "We introduce you to people who align with your values and goals. No swiping. No games.",
+              },
+              {
+                step: "3",
+                title: "Reveal each other gradually",
+                description:
+                  "Photos stay blurred until your conversation deepens. Connection first, appearance when it matters.",
+              },
+            ].map((item) => (
+              <div
+                key={item.step}
+                className="rounded-2xl bg-[#550015]/80 p-6 sm:p-8 shadow-soft border border-[#800022]/20 transition-transform duration-300 hover:translate-y-[-2px]"
+              >
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#800022]/40 text-[#F5F0E8] font-medium text-sm">
+                  {item.step}
+                </span>
+                <h3 className="mt-4 text-lg font-medium text-[#F5F0E8]">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-[#D4C9BC] text-sm leading-relaxed">
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
+
+      <footer className="w-full py-8 px-4 border-t border-[#550015]">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-[#A89888] text-sm">Ambrosia</span>
+          <div className="flex gap-6 text-sm text-[#A89888]">
+            <Link href="/quiz" className="hover:text-[#D4C9BC] transition-colors">
+              Quiz
+            </Link>
+            <Link href="/login" className="hover:text-[#D4C9BC] transition-colors">
+              Sign in
+            </Link>
+            <Link href="/signup" className="hover:text-[#D4C9BC] transition-colors">
+              Sign up
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
