@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useApp } from "@/context/AppContext";
 
 export default function NavBar() {
@@ -10,9 +11,18 @@ export default function NavBar() {
     <nav className="max-w-5xl mx-auto flex items-center justify-between">
       <Link
         href="/"
-        className="text-xl font-semibold tracking-tight text-[#F5F0E8] [font-family:var(--font-cormorant)] hover:text-[#D4C9BC] transition-colors"
+        className="flex items-center gap-2 hover:opacity-80 transition-opacity"
       >
-        Ambrosia
+        <Image
+          src="/ambrosia_logo.png"
+          alt="Ambrosia"
+          width={32}
+          height={32}
+          className="object-contain"
+        />
+        <span className="text-xl font-semibold tracking-tight text-[#F5F0E8] [font-family:var(--font-cormorant)]">
+          Ambrosia
+        </span>
       </Link>
       <div className="flex items-center gap-4">
         {user ? (
