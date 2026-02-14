@@ -27,6 +27,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${dmSans.variable} ${cormorant.variable}`}>
+      <head>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-H2H19EKZK3"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-H2H19EKZK3');
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-screen antialiased bg-[#3F1414] text-[#F5F0E8]">
         <AppProvider>{children}</AppProvider>
       </body>
