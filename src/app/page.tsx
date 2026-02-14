@@ -19,8 +19,8 @@ export default function LandingPage() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-medium leading-tight tracking-tight text-[#F5F0E8] [font-family:var(--font-cormorant)]">
             See the person, not just their picture
           </h1>
-          <p className="text-lg sm:text-xl text-[#D4C9BC] max-w-md mx-auto">
-            Build connection before first impressions.
+          <p className="text-lg sm:text-xl text-[#D4C9BC] max-w-lg mx-auto">
+            A new dating app that matches you based on personality, and reveals pictures as you connect
           </p>
           <div className="pt-4">
             {user ? (
