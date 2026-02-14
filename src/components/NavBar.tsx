@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 
 export default function NavBar() {
-  const { user } = useApp();
+  const { user, signOut } = useApp();
+  const router = useRouter();
+
+  const handleSignOut = () => {
+    signOut();
+    router.push("/");
+  };
 
   return (
     <nav className="max-w-5xl mx-auto flex items-center justify-between">
@@ -52,6 +59,12 @@ export default function NavBar() {
               </svg>
               {user.name}
             </Link>
+            <button
+              onClick={handleSignOut}
+              className="text-[#A89888] hover:text-[#F5F0E8] text-sm font-medium transition-colors"
+            >
+              Sign out
+            </button>
           </>
         ) : (
           <>
