@@ -28,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${dmSans.variable} ${cormorant.variable}`}>
       <head>
+        <script src="https://t.contentsquare.net/uxa/ff1ef5f5129f3.js"></script>
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-H2H19EKZK3"></script>
         <script
           dangerouslySetInnerHTML={{
