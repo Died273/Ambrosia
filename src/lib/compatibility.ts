@@ -58,9 +58,9 @@ export function computeCompatibilityScore(
 }
 
 export function getCompatibilitySummary(score: number): string {
-  if (score >= 90) return "Highly aligned values and vision";
-  if (score >= 80) return "Strong alignment on what matters";
-  if (score >= 70) return "Meaningful overlap in priorities";
-  if (score >= 60) return "Good foundation for connection";
-  return "Worth a deeper conversation";
+  if (score >= 90) return "Perfect Match";
+  if (score >= 80) return "Amazing Match";
+  if (score >= 70) return "Great Match";
+  if (score >= 60) return "Good Match";
+  return "Moderate Match";
 }

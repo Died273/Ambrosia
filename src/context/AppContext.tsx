@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useState, useEffect } from "react";
+import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from "react";
 import type {
   UserProfile,
   Match,
@@ -13,6 +13,7 @@ import { computeCompatibilityScore, getCompatibilitySummary } from "@/lib/compat
 import { getBlurLevel } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { rowToProfile, profileToRow, type ProfileRow } from "@/lib/supabase/profiles";
+import * as ConversationAPI from "@/lib/supabase/conversations";
 
 const STORAGE_KEYS = {
   user: "ambrosia_user",
@@ -35,8 +36,11 @@ interface AppContextValue {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => void;
   updateUserPhotos: (photos: string[]) => Promise<{ error: AuthError | null }>;
-  getOrCreateConversation: (matchId: string) => Conversation;
-  sendMessage: (conversationId: string, text: string) => void;
+  updateUserLocation: (location: string) => Promise<{ error: AuthError | null }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: AuthError | null }>;
+  deleteAccount: () => Promise<{ error: AuthError | null }>;
+  getOrCreateConversation: (matchId: string, matchedUserId: string) => Promise<Conversation>;
+  sendMessage: (conversationId: string, text: string) => Promise<void>;
   getMessageCount: (matchId: string) => number;
   getBlurForMatch: (matchId: string) => number;
   setMutualReveal: (matchId: string) => void;
@@ -119,12 +123,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [quiz, setQuizState] = useState<QuizState | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
   const [mutualReveals, setMutualRevealsState] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setQuizState(loadJson(STORAGE_KEYS.quiz, null));
     setMatches(loadJson(STORAGE_KEYS.matches, []));
-    setConversations(loadJson(STORAGE_KEYS.conversations, []));
+    // Don't load conversations from localStorage — always fetch fresh from Supabase
     const revealed = loadJson<string[]>(STORAGE_KEYS.matches + "_reveals", []);
     setMutualRevealsState(new Set(revealed));
 
@@ -177,11 +183,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const persistUser = useCallback((u: UserProfile | null) => {
     setUser(u);
     saveJson(STORAGE_KEYS.user, u);
-  }, []);
-
-  const persistConversations = useCallback((c: Conversation[]) => {
-    setConversations(c);
-    saveJson(STORAGE_KEYS.conversations, c);
   }, []);
 
   const setQuizAnswers = useCallback((answers: QuizAnswer[]) => {
@@ -328,7 +329,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setConversations([]);
     setMutualRevealsState(new Set());
     saveJson(STORAGE_KEYS.matches, []);
-    saveJson(STORAGE_KEYS.conversations, []);
     saveJson(STORAGE_KEYS.matches + "_reveals", []);
   }, [persistUser]);
 
@@ -338,51 +338,120 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getOrCreateConversation = useCallback(
-    (matchId: string): Conversation => {
-      const match = matches.find((m) => m.id === matchId);
-      const participantIds = user ? [user.id, match?.userId ?? ""] : [];
-      let conv = conversations.find(
-        (c) => c.matchId === matchId
-      );
-      if (conv) return conv;
-      conv = {
+    async (matchId: string, matchedUserId: string): Promise<Conversation> => {
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Check if conversation already exists in state (use ref for stable callback identity)
+      const existing = conversationsRef.current.find((c) => c.matchId === matchId);
+      if (existing) return existing;
+
+      const supabase = createClient();
+
+      try {
+        if (supabase) {
+          // Try to get or create from Supabase
+          const conv = await ConversationAPI.getOrCreateConversation(
+            matchId,
+            user.id,
+            matchedUserId
+          );
+
+          // Update state with the conversation from database
+          setConversations((prev) => {
+            const next = [...prev, conv];
+        
+            return next;
+          });
+
+          return conv;
+        }
+      } catch (error) {
+        console.warn("Failed to get conversation from Supabase, using localStorage:", error);
+      }
+
+      // Fallback to localStorage-only mode
+      const conv: Conversation = {
         id: "conv-" + matchId + "-" + Date.now(),
         matchId,
-        participantIds,
+        participantIds: [user.id, matchedUserId],
         messages: [],
         createdAt: Date.now(),
       };
-      const next = [...conversations, conv];
+
+      const next = [...conversationsRef.current, conv];
       setConversations(next);
-      saveJson(STORAGE_KEYS.conversations, next);
+
       return conv;
     },
-    [conversations, matches, user]
+    [user]
   );
 
   const sendMessage = useCallback(
-    (conversationId: string, text: string) => {
-      if (!user) return;
-      const msg: ChatMessage = {
+    async (conversationId: string, text: string): Promise<void> => {
+      if (!user) throw new Error("User not authenticated");
+
+      const supabase = createClient();
+      let msg: ChatMessage;
+
+      try {
+        if (supabase) {
+          // Send message via Supabase
+          msg = await ConversationAPI.sendMessage(conversationId, user.id, text);
+
+          // Update local state with the saved message
+          setConversations((prev) => {
+            const next = prev.map((c) =>
+              c.id === conversationId
+                ? { ...c, messages: [...c.messages, msg] }
+                : c
+            );
+        
+            return next;
+          });
+
+          // Update match message count
+          setMatches((prev) => {
+            const conv = conversations.find((c) => c.id === conversationId);
+            if (!conv) return prev;
+            const newCount = conv.messages.length + 1;
+            const next = prev.map((m) =>
+              m.id === conv.matchId ? { ...m, messageCount: newCount, lastMessageAt: Date.now() } : m
+            );
+            saveJson(STORAGE_KEYS.matches, next);
+            return next;
+          });
+
+          return;
+        }
+      } catch (error) {
+        console.warn("Failed to send message via Supabase, using localStorage:", error);
+      }
+
+      // Fallback to localStorage-only mode
+      msg = {
         id: "msg-" + Date.now(),
         conversationId,
         senderId: user.id,
         text,
         timestamp: Date.now(),
       };
+
       setConversations((prev) => {
         const next = prev.map((c) =>
           c.id === conversationId
             ? { ...c, messages: [...c.messages, msg] }
             : c
         );
-        saveJson(STORAGE_KEYS.conversations, next);
+    
         return next;
       });
+
       setMatches((prev) => {
         const conv = conversations.find((c) => c.id === conversationId);
         if (!conv) return prev;
-        const newCount = (conv.messages.length + 1);
+        const newCount = conv.messages.length + 1;
         const next = prev.map((m) =>
           m.id === conv.matchId ? { ...m, messageCount: newCount, lastMessageAt: Date.now() } : m
         );
@@ -396,7 +465,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getMessageCount = useCallback(
     (matchId: string) => {
       const conv = conversations.find((c) => c.matchId === matchId);
-      return conv ? conv.messages.length : 0;
+      return conv ? conv.messages.filter((m) => m.text.length > 4).length : 0;
     },
     [conversations]
   );
@@ -405,7 +474,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (matchId: string) => {
       const revealed = mutualReveals.has(matchId);
       const conv = conversations.find((c) => c.matchId === matchId);
-      const totalCount = conv ? conv.messages.length : 0;
+      const totalCount = conv ? conv.messages.filter((m) => m.text.length > 4).length : 0;
       return getBlurLevel(totalCount, revealed);
     },
     [conversations, mutualReveals]
@@ -439,6 +508,76 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   }, [user]);
 
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<{ error: AuthError | null }> => {
+    if (!user) return { error: { message: "Not signed in" } };
+
+    const supabase = createClient();
+    if (!supabase) return { error: { message: "Supabase not available" } };
+
+    // Verify current password by re-authenticating
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (signInError) return { error: { message: "Current password is incorrect" } };
+
+    // Update to new password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) return { error: { message: updateError.message } };
+
+    return { error: null };
+  }, [user]);
+
+  const updateUserLocation = useCallback(async (location: string): Promise<{ error: AuthError | null }> => {
+    if (!user) return { error: { message: "Not signed in" } };
+
+    const supabase = createClient();
+    if (supabase) {
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ location })
+        .eq("id", user.id);
+
+      if (updateError) return { error: { message: updateError.message } };
+    }
+
+    const updated = { ...user, location };
+    setUser(updated);
+    saveJson(STORAGE_KEYS.user, updated);
+    return { error: null };
+  }, [user]);
+
+  const deleteAccount = useCallback(async (): Promise<{ error: AuthError | null }> => {
+    if (!user) return { error: { message: "Not signed in" } };
+
+    const supabase = createClient();
+    if (supabase) {
+      // Delete user's messages, conversations, matches, and profile
+      await supabase.from("messages").delete().or(`sender_id.eq.${user.id}`);
+      await supabase.from("conversations").delete().or(`participant_1_id.eq.${user.id},participant_2_id.eq.${user.id}`);
+      await supabase.from("matches").delete().or(`user_id.eq.${user.id},matched_user_id.eq.${user.id}`);
+      await supabase.from("profiles").delete().eq("id", user.id);
+
+      // Sign out from auth
+      await supabase.auth.signOut();
+    }
+
+    // Clear all local state
+    persistUser(null);
+    setMatches([]);
+    setConversations([]);
+    setMutualRevealsState(new Set());
+    saveJson(STORAGE_KEYS.matches, []);
+    saveJson(STORAGE_KEYS.matches + "_reveals", []);
+    saveJson(STORAGE_KEYS.quiz, null);
+
+    return { error: null };
+  }, [user, persistUser]);
+
   const value: AppContextValue = {
     user,
     quiz,
@@ -450,6 +589,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     updateUserPhotos,
+    updateUserLocation,
+    changePassword,
+    deleteAccount,
     getOrCreateConversation,
     sendMessage,
     getMessageCount,

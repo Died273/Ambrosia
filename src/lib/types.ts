@@ -33,6 +33,22 @@ export interface Match {
   lastMessageAt?: number;
 }
 
+export interface MatchCandidate {
+  profile: UserProfile;
+  score: number;
+  summary: string;
+}
+
+export interface StoredMatch {
+  id: string;
+  userId: string;
+  matchedUserId: string;
+  compatibilityScore: number;
+  compatibilitySummary: string;
+  createdAt: number;
+  isActive: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
