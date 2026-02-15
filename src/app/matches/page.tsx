@@ -147,9 +147,6 @@ export default function MatchesPage() {
           <h1 className="text-4xl font-medium text-[#F5F0E8] [font-family:var(--font-cormorant)]">
             Your Matches
           </h1>
-          <Button variant="secondary" onClick={regenerateMatches}>
-            Refresh Matches
-          </Button>
         </div>
 
         {matches.length === 0 ? (

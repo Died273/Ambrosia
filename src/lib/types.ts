@@ -69,8 +69,8 @@ export type BlurLevel = 100 | 70 | 40 | 0;
 
 export function getBlurLevel(messageCount: number, mutualReveal: boolean): BlurLevel {
   if (mutualReveal) return 0;
-  if (messageCount >= 30) return 0;
-  if (messageCount >= 15) return 40;
+  if (messageCount >= 20) return 0;
+  if (messageCount >= 10) return 40;
   if (messageCount >= 5) return 70;
   return 100;
 }

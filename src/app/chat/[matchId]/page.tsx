@@ -184,9 +184,9 @@ export default function ChatPage() {
   }
 
   const connectionLabel =
-    messageCount >= 30 || mutualReveal
+    messageCount >= 20 || mutualReveal
       ? "Connection Level: Strong"
-      : messageCount >= 15
+      : messageCount >= 10
         ? "Connection Level: Growing"
         : messageCount >= 5
           ? "Connection Level: Building"
@@ -226,9 +226,9 @@ export default function ChatPage() {
             {matchedProfile.name}, {matchedProfile.age}
           </p>
           <p className="text-xs text-[#D4C9BC]">
-            {messageCount >= 30 || mutualReveal
+            {messageCount >= 20 || mutualReveal
               ? "Fully revealed"
-              : messageCount >= 15
+              : messageCount >= 10
                 ? "40% visible"
                 : messageCount >= 5
                   ? "30% visible"
